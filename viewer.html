@@ -1164,7 +1164,7 @@ function parseVTT(text) {
     const m = TS_RX.exec(line);
     if (m) {
       if (start !== null && textLines.length) {
-        const t = textLines.join(' ');
+        const t = textLines[textLines.length - 1];
         if (t && !seen.has(t)) { cues.push({ start, end, text: t }); seen.add(t); }
       }
       start = toSec(m[1],m[2],m[3],m[4]);
@@ -1189,7 +1189,7 @@ function parseVTT(text) {
   }
   // Last cue
   if (start !== null && textLines.length) {
-    const t = textLines.join(' ');
+    const t = textLines[textLines.length - 1];
     if (t && !seen.has(t)) cues.push({ start, end, text: t });
   }
   return cues;
