@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -1174,7 +1174,8 @@ function parseVTT(text) {
     if (inCue) {
       if (line.trim() === '') {
         if (textLines.length) {
-          const t = textLines.join(' ');
+          // ASR YouTube: primera linea repite cue anterior, usar solo la ultima
+          const t = textLines[textLines.length - 1];
           if (t && !seen.has(t)) { cues.push({ start, end, text: t }); seen.add(t); }
         }
         inCue = false; start = null; textLines = [];
@@ -1193,26 +1194,45 @@ function parseVTT(text) {
 }
 
 // ── DEDUP SOLAPAMIENTO ──
-// YouTube ASR genera ventanas deslizantes: cada cue repite el final del anterior.
-// Este paso detecta y elimina esos solapamientos.
+// YouTube ASR genera ventanas deslizantes donde cada cue contiene
+// el texto completo del cue anterior + palabras nuevas.
+// Algoritmo: si cue[i] es prefijo de cue[i+1], descartar cue[i].
+// Si cue[i+1] empieza con un sufijo de cue[i], recortar ese prefijo.
 function dedupCues(cues) {
   if (!cues.length) return cues;
-  const result = [cues[0]];
-  for (let i = 1; i < cues.length; i++) {
+
+  // Paso 1: si un cue es subconjunto total del siguiente, eliminarlo
+  const filtered = [];
+  for (let i = 0; i < cues.length; i++) {
+    const curr = cues[i].text.trim();
+    const next = cues[i + 1] ? cues[i + 1].text.trim() : null;
+    // Si el siguiente cue empieza con el texto actual completo, este cue es redundante
+    if (next && next.startsWith(curr) && next.length > curr.length) continue;
+    filtered.push(cues[i]);
+  }
+
+  // Paso 2: recortar solapamientos parciales entre cues consecutivos
+  const result = [filtered[0]];
+  for (let i = 1; i < filtered.length; i++) {
     const prev = result[result.length - 1].text;
-    const curr = cues[i].text;
+    const curr = filtered[i].text;
+
     // Buscar el solapamiento más largo: fin de prev == inicio de curr
     let overlap = 0;
-    const maxCheck = Math.min(prev.length, curr.length, 120);
-    for (let len = maxCheck; len > 10; len--) {
-      if (prev.endsWith(curr.slice(0, len))) { overlap = len; break; }
+    const maxCheck = Math.min(prev.length, curr.length, 200);
+    for (let len = maxCheck; len > 8; len--) {
+      if (prev.endsWith(curr.slice(0, len))) {
+        overlap = len;
+        break;
+      }
     }
+
     if (overlap > 0) {
       const trimmed = curr.slice(overlap).trim();
-      if (trimmed.length < 8) continue; // descartamos si queda muy poco
-      result.push({ ...cues[i], text: trimmed });
+      if (trimmed.length < 6) continue; // descartar si queda muy poco
+      result.push({ ...filtered[i], text: trimmed });
     } else {
-      result.push(cues[i]);
+      result.push(filtered[i]);
     }
   }
   return result;
