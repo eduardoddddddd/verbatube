@@ -1,0 +1,8 @@
+subtitles/
+verbatube.json
+download_archive.txt
+meta/
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db

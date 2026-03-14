@@ -18,7 +18,8 @@ from pathlib import Path
 from datetime import datetime, timezone
 
 BASE_DIR = Path(__file__).parent
-SUBTITLES_DIR = BASE_DIR / "subtitles"
+CORPUS_DIR    = Path(r"C:\Users\Edu\VTTs")   # Carpeta común para todos los proyectos
+SUBTITLES_DIR = CORPUS_DIR
 INDEX_FILE = BASE_DIR / "verbatube.json"
 
 # Máx. caracteres de texto para preview en la lista
@@ -127,16 +128,68 @@ def parse_vtt(vtt_path: Path) -> tuple[list[dict], str]:
     return cues, full_text
 
 
-def load_meta_json(video_id: str) -> dict:
-    """Carga metadatos de yt-dlp (.info.json) si existe."""
-    # yt-dlp guarda como VIDEO_ID.info.json en el mismo directorio
-    meta_path = SUBTITLES_DIR / f"{video_id}.info.json"
-    if meta_path.exists():
-        try:
-            with open(meta_path, encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            pass
+def extract_video_id(vtt_path: Path) -> str:
+    """
+    Extrae el video_id del nombre de archivo VTT.
+    Soporta dos formatos:
+      - yt-dlp plano:   dQw4w9WgXcQ.es.vtt       → dQw4w9WgXcQ
+      - corpus_astro:   20220112_kq5XQVJlLl4_Titulo.vtt → kq5XQVJlLl4
+    """
+    stem = vtt_path.stem  # sin .vtt
+    # Formato corpus_astro: YYYYMMDD_VIDEOID_...
+    parts_us = stem.split("_")
+    if len(parts_us) >= 2 and re.match(r"^\d{8}$", parts_us[0]):
+        # Si parts_us[1] está vacío, el ID empezaba con '-' (yt-dlp lo convierte a '_')
+        if parts_us[1] == '' and len(parts_us) >= 3:
+            return '_' + parts_us[2]
+        return parts_us[1]
+    # Formato yt-dlp: VIDEO_ID.lang
+    return stem.split(".")[0]
+
+
+def parse_filename_meta(vtt_path: Path) -> dict:
+    """
+    Extrae metadatos del nombre de archivo y directorio cuando no hay .info.json.
+    Formato: YYYYMMDD_VIDEOID_Titulo del video.es.vtt
+    """
+    stem = vtt_path.stem
+    parts_us = stem.split("_")
+    meta = {}
+
+    # Canal = nombre del directorio padre (si es subcarpeta de subtitles)
+    parent = vtt_path.parent
+    if parent != SUBTITLES_DIR:
+        meta["channel"] = parent.name
+
+    if len(parts_us) >= 3 and re.match(r"^\d{8}$", parts_us[0]):
+        # Fecha YYYYMMDD
+        meta["upload_date"] = parts_us[0]
+        # Título: todo a partir del tercer segmento, quitando extensiones de idioma
+        raw_title = "_".join(parts_us[2:])
+        # Quitar sufijo de idioma (.es, .en, .es-auto, etc.)
+        raw_title = re.sub(r"\.[a-z]{2}(-[a-z]+)?$", "", raw_title)
+        meta["title"] = raw_title.replace("_", " ").strip()
+
+    return meta
+
+
+def load_meta_json(video_id: str, vtt_path: Path = None) -> dict:
+    """Carga metadatos de yt-dlp (.info.json) si existe, buscando junto al VTT."""
+    # Buscar en el mismo directorio que el VTT primero
+    search_dirs = []
+    if vtt_path:
+        search_dirs.append(vtt_path.parent)
+    search_dirs.append(SUBTITLES_DIR)
+
+    for d in search_dirs:
+        # Formato corpus_astro: FECHA_VIDEOID_*.info.json
+        matches = list(d.glob(f"*{video_id}*.info.json"))
+        if matches:
+            try:
+                with open(matches[0], encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
     return {}
 
 
@@ -165,9 +218,11 @@ def build_index(rebuild: bool = False):
         except Exception as e:
             print(f"[WARN] Error leyendo índice existente: {e}")
 
-    # Encontrar todos los VTT disponibles
-    # Formato de yt-dlp: VIDEO_ID.LANG.vtt o VIDEO_ID.LANG-auto.vtt
-    vtt_files = list(SUBTITLES_DIR.glob("*.vtt"))
+    # Encontrar todos los VTT disponibles (búsqueda recursiva)
+    # Soporta dos formatos:
+    #   - yt-dlp plano:     VIDEO_ID.LANG.vtt
+    #   - corpus_astro:     FECHA_VIDEO_ID_TITULO.vtt  (en subcarpetas por canal)
+    vtt_files = list(SUBTITLES_DIR.rglob("*.vtt"))
     
     if not vtt_files:
         print(f"[ERROR] No se encontraron archivos .vtt en {SUBTITLES_DIR}")
@@ -177,12 +232,9 @@ def build_index(rebuild: bool = False):
     # Agrupar VTTs por video_id (puede haber es + en por vídeo)
     videos_vtts: dict[str, list[Path]] = {}
     for vtt in vtt_files:
-        # Extraer video_id: todo antes del primer punto de idioma
-        # Ej: "dQw4w9WgXcQ.es.vtt" → "dQw4w9WgXcQ"
-        stem = vtt.stem  # "dQw4w9WgXcQ.es"
-        parts = stem.split(".")
-        video_id = parts[0]
-        videos_vtts.setdefault(video_id, []).append(vtt)
+        video_id = extract_video_id(vtt)
+        if video_id:
+            videos_vtts.setdefault(video_id, []).append(vtt)
 
     print(f"[INFO] VTTs encontrados: {len(vtt_files)} de {len(videos_vtts)} vídeos")
 
@@ -205,8 +257,12 @@ def build_index(rebuild: bool = False):
         lang_part = primary_vtt.stem.replace(video_id + ".", "")
         lang = lang_part.split("-")[0] if lang_part else "unknown"
 
-        # Ruta relativa para el JSON (el viewer.html la usará)
-        subtitle_file = str(primary_vtt.relative_to(BASE_DIR)).replace("\\", "/")
+        # Ruta relativa para el viewer.html — via la junction subtitles/
+        # CORPUS_DIR puede estar fuera de BASE_DIR, usamos la junction como puente
+        try:
+            subtitle_file = "subtitles/" + str(primary_vtt.relative_to(CORPUS_DIR)).replace("\\", "/")
+        except ValueError:
+            subtitle_file = str(primary_vtt).replace("\\", "/")
 
         # Comprobar si ya está indexado y el VTT no ha cambiado
         if video_id in existing_index and not rebuild:
@@ -224,8 +280,10 @@ def build_index(rebuild: bool = False):
             print(f"    [WARN] Sin texto extraído, omitiendo")
             continue
 
-        # Cargar metadatos de yt-dlp
-        meta = load_meta_json(video_id)
+        # Cargar metadatos: primero .info.json, luego del nombre de archivo
+        meta = load_meta_json(video_id, primary_vtt)
+        if not meta:
+            meta = parse_filename_meta(primary_vtt)
 
         # Construir entrada del índice
         entry = {

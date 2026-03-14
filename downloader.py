@@ -20,12 +20,10 @@ from pathlib import Path
 from datetime import datetime
 
 # Directorios
-BASE_DIR = Path(__file__).parent
-SUBTITLES_DIR = BASE_DIR / "subtitles"
-META_DIR = BASE_DIR / "meta"
+BASE_DIR   = Path(__file__).parent
+CORPUS_DIR = Path(r"C:\Users\Edu\VTTs")   # Carpeta común para todos los proyectos
 
-SUBTITLES_DIR.mkdir(exist_ok=True)
-META_DIR.mkdir(exist_ok=True)
+CORPUS_DIR.mkdir(exist_ok=True)
 
 
 def check_ytdlp():
@@ -42,7 +40,7 @@ def check_ytdlp():
 def get_already_downloaded():
     """Devuelve set de video_ids ya descargados."""
     existing = set()
-    for f in SUBTITLES_DIR.glob("*.vtt"):
+    for f in CORPUS_DIR.rglob("*.vtt"):
         # Formato: VIDEO_ID.LANG.vtt  o  VIDEO_ID.LANG.srv3  etc.
         parts = f.stem.split(".")
         if len(parts) >= 2:
@@ -76,7 +74,7 @@ def download_subtitles(url: str, langs: list[str], skip_existing: bool = True):
         "--sub-format", "vtt",           # Formato VTT (mejor que SRT para timestamps)
         "--write-info-json",             # Metadatos del vídeo en JSON
         "--no-overwrites",               # No sobreescribir si existe
-        "--output", str(SUBTITLES_DIR / "%(id)s.%(ext)s"),
+        "--output", str(CORPUS_DIR / "%(channel)s" / "%(upload_date)s_%(id)s_%(title)s.%(ext)s"),
         "--restrict-filenames",          # Evita caracteres raros en nombres
         "--ignore-errors",               # Continúa si falla un vídeo
         "--no-playlist-reverse",         # Mantiene orden cronológico

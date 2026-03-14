@@ -8,20 +8,20 @@
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Lora:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg:        #09090f;
-    --surface:   #11111c;
-    --surface2:  #181826;
-    --border:    #1e1e2e;
-    --border2:   #2a2a3e;
-    --gold:      #c8a44a;
-    --gold-dim:  #8a6f2e;
-    --gold-glow: rgba(200, 164, 74, 0.12);
-    --text:      #e2dcd0;
-    --text-muted:#7a7a8e;
-    --text-dim:  #48485a;
-    --red:       #e05555;
-    --green:     #55a878;
-    --sidebar-w: 400px;
+    --bg:        #f5f5f0;
+    --surface:   #ffffff;
+    --surface2:  #eeede8;
+    --border:    #d4d0c8;
+    --border2:   #bbb8ae;
+    --gold:      #7a5c1e;
+    --gold-dim:  #9a7432;
+    --gold-glow: rgba(122, 92, 30, 0.10);
+    --text:      #1a1a16;
+    --text-muted:#3a3a30;
+    --text-dim:  #7a7a6a;
+    --red:       #b83232;
+    --green:     #2a7a4a;
+    --sidebar-w: 420px;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -31,6 +31,7 @@
     background: var(--bg);
     color: var(--text);
     font-family: 'Outfit', sans-serif;
+    font-size: 16px;
     overflow: hidden;
   }
 
@@ -42,26 +43,153 @@
     height: 100vh;
   }
 
+  /* ── DOWNLOAD PANEL ── */
+  #download-panel {
+    display: none;
+    flex-direction: column;
+    gap: 20px;
+    padding: 40px 64px;
+    max-width: 700px;
+    overflow-y: auto;
+  }
+  #download-panel.visible { display: flex; }
+
+  .dl-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .dl-subtitle { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+
+  .dl-field label {
+    display: block;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .dl-field input, .dl-field select {
+    width: 100%;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: 4px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .dl-field input:focus, .dl-field select:focus { border-color: var(--gold-dim); }
+  .dl-field input::placeholder { color: var(--text-dim); }
+
+  .dl-btn-row { display: flex; gap: 10px; align-items: center; }
+
+  .dl-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 9px 22px;
+    border-radius: 4px;
+    border: 1px solid var(--gold-dim);
+    background: var(--gold-glow);
+    color: var(--gold);
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.04em;
+  }
+  .dl-btn:hover { background: rgba(200,164,74,0.2); border-color: var(--gold); }
+  .dl-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .dl-btn-sec {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 9px 18px;
+    border-radius: 4px;
+    border: 1px solid var(--border2);
+    background: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .dl-btn-sec:hover { border-color: var(--gold-dim); color: var(--text); }
+
+  #dl-log {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    min-height: 200px;
+    max-height: 400px;
+    overflow-y: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.7;
+    white-space: pre-wrap;
+    display: none;
+  }
+  #dl-log.visible { display: block; }
+
+  .dl-status {
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dl-status .spinner { width: 10px; height: 10px; border-width: 1px; }
+
   /* ── TOPBAR ── */
   #topbar {
     grid-column: 1 / -1;
     display: flex;
     align-items: center;
     gap: 16px;
-    padding: 0 24px;
-    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    border-bottom: 2px solid var(--border);
     background: var(--surface);
     position: relative;
     z-index: 10;
   }
 
   #logo {
-    font-size: 15px;
-    font-weight: 600;
+    font-size: 18px;
+    font-weight: 700;
     letter-spacing: 0.12em;
     color: var(--gold);
     text-transform: uppercase;
     white-space: nowrap;
+    cursor: pointer;
+  }
+
+  /* Nav tabs */
+  .nav-tabs {
+    display: flex;
+    gap: 2px;
+    margin-left: 8px;
+  }
+  .nav-tab {
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 4px 14px;
+    border-radius: 3px 3px 0 0;
+    border: 1px solid transparent;
+    border-bottom: none;
+    cursor: pointer;
+    color: var(--text-dim);
+    background: none;
+    transition: all 0.15s;
+    letter-spacing: 0.04em;
+  }
+  .nav-tab:hover { color: var(--text-muted); }
+  .nav-tab.active {
+    color: var(--gold);
+    border-color: var(--border2);
+    background: var(--surface);
   }
 
   #logo span {
@@ -72,13 +200,13 @@
   .top-divider { width: 1px; height: 20px; background: var(--border2); }
 
   #stats-bar {
-    font-size: 11px;
+    font-size: 13px;
     color: var(--text-dim);
     font-family: 'JetBrains Mono', monospace;
     letter-spacing: 0.04em;
   }
 
-  #stats-bar b { color: var(--text-muted); }
+  #stats-bar b { color: var(--text-muted); font-weight: 600; }
 
   .top-right {
     margin-left: auto;
@@ -266,8 +394,8 @@
   }
 
   .card-title {
-    font-size: 12.5px;
-    font-weight: 500;
+    font-size: 14px;
+    font-weight: 600;
     color: var(--text);
     line-height: 1.35;
     display: -webkit-box;
@@ -277,7 +405,7 @@
   }
 
   .card-channel {
-    font-size: 10px;
+    font-size: 12px;
     color: var(--text-muted);
     font-family: 'JetBrains Mono', monospace;
     white-space: nowrap;
@@ -286,15 +414,15 @@
   }
 
   .card-date {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--text-dim);
     font-family: 'JetBrains Mono', monospace;
   }
 
   .card-snippet {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text-muted);
-    line-height: 1.4;
+    line-height: 1.45;
     font-style: italic;
     margin-top: 3px;
     display: -webkit-box;
@@ -363,11 +491,11 @@
   }
 
   #viewer-title {
-    font-size: 18px;
-    font-weight: 600;
+    font-size: 22px;
+    font-weight: 700;
     color: var(--text);
     line-height: 1.3;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
   }
 
   #viewer-meta {
@@ -381,7 +509,7 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    font-size: 11px;
+    font-size: 13px;
     font-family: 'JetBrains Mono', monospace;
     color: var(--text-muted);
   }
@@ -460,7 +588,7 @@
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 32px 64px 64px;
+    padding: 48px 120px 80px 120px;
   }
 
   #subtitle-scroll::-webkit-scrollbar { width: 5px; }
@@ -490,10 +618,12 @@
 
   /* Subtitle paragraphs */
   .subtitle-block {
-    margin-bottom: 24px;
+    margin-bottom: 32px;
     display: flex;
     gap: 20px;
     align-items: flex-start;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--border);
   }
 
   .ts-gutter {
@@ -514,14 +644,15 @@
 
   .sub-text {
     flex: 1;
-    font-family: 'Lora', serif;
-    font-size: 15.5px;
-    line-height: 1.75;
-    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-size: 20px;
+    font-weight: 500;
+    line-height: 2.2;
+    color: #111;
   }
 
   .sub-text mark {
-    background: rgba(200,164,74,0.2);
+    background: rgba(122,92,30,0.15);
     color: var(--gold);
     border-radius: 2px;
     padding: 0 2px;
@@ -529,18 +660,21 @@
   }
 
   .sub-text mark.current {
-    background: rgba(200,164,74,0.45);
+    background: rgba(122,92,30,0.30);
     outline: 1px solid var(--gold);
   }
 
   /* Clean mode (no timestamps) */
   .clean-paragraph {
-    font-family: 'Lora', serif;
-    font-size: 16px;
-    line-height: 1.8;
-    color: var(--text);
-    margin-bottom: 1.4em;
-    max-width: 680px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 20px;
+    font-weight: 500;
+    line-height: 2.2;
+    color: #111;
+    margin-bottom: 2.8em;
+    max-width: 860px;
+    padding-bottom: 0.8em;
+    border-bottom: 1px solid var(--border);
   }
 
   /* Error */
@@ -572,16 +706,16 @@
     z-index: 100;
   }
   #loading-screen .logo-big {
-    font-size: 22px;
-    font-weight: 600;
+    font-size: 28px;
+    font-weight: 700;
     letter-spacing: 0.14em;
     color: var(--gold);
     text-transform: uppercase;
   }
-  #loading-screen .logo-big span { color: var(--text-muted); font-weight: 300; }
+  #loading-screen .logo-big span { color: var(--text-muted); font-weight: 400; }
   #loading-screen .load-msg {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
+    font-size: 14px;
     color: var(--text-dim);
   }
   #loading-screen .load-bar-wrap {
@@ -620,7 +754,11 @@
 
   <!-- TOPBAR -->
   <div id="topbar">
-    <div id="logo">Verba<span>tube</span></div>
+    <div id="logo" onclick="setAppTab('library')">Verba<span>tube</span></div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" id="tab-library" onclick="setAppTab('library')">Biblioteca</button>
+      <button class="nav-tab" id="tab-download" onclick="setAppTab('download')">+ Descargar</button>
+    </div>
     <div class="top-divider"></div>
     <div id="stats-bar">—</div>
     <div class="top-right">
@@ -647,6 +785,36 @@
 
   <!-- MAIN -->
   <div id="main">
+
+    <!-- Download panel -->
+    <div id="download-panel">
+      <div>
+        <div class="dl-title">Descargar canal / playlist</div>
+        <div class="dl-subtitle">Introduce la URL de un canal, playlist o vídeo de YouTube.<br>Se descargarán los subtítulos y se reindexará automáticamente.</div>
+      </div>
+      <div class="dl-field">
+        <label>URL de YouTube</label>
+        <input id="dl-url" type="url" placeholder="https://www.youtube.com/@canal  ó  /playlist?list=...  ó  /watch?v=...">
+      </div>
+      <div class="dl-field">
+        <label>Idiomas</label>
+        <select id="dl-lang">
+          <option value="es,en">Español + Inglés (por defecto)</option>
+          <option value="es">Solo Español</option>
+          <option value="en">Solo Inglés</option>
+        </select>
+      </div>
+      <div class="dl-btn-row">
+        <button class="dl-btn" id="dl-start-btn" onclick="startDownload()">▶ Iniciar descarga</button>
+        <button class="dl-btn-sec" onclick="startReindex()">↺ Solo reindexar</button>
+        <div class="dl-status" id="dl-status" style="display:none">
+          <span class="spinner"></span><span id="dl-status-msg">Procesando…</span>
+        </div>
+      </div>
+      <div id="dl-log"></div>
+    </div>
+
+    <div id="library-view" style="display:flex;flex-direction:column;height:100%;overflow:hidden">
     <div id="empty-state">
       <div class="empty-icon">◈</div>
       <div class="empty-title">Selecciona un vídeo</div>
@@ -667,8 +835,9 @@
       </div>
       <div id="subtitle-scroll"></div>
     </div>
-  </div>
+  </div><!-- /library-view -->
 
+</div><!-- /main -->
 </div>
 
 <script>
@@ -935,7 +1104,7 @@ async function loadVideo(v) {
     const res = await fetch(v.subtitle_file + "?t=" + Date.now());
     if (!res.ok) throw new Error(`No se pudo cargar ${v.subtitle_file} (HTTP ${res.status})`);
     const vttText = await res.text();
-    loadedCues = parseVTT(vttText);
+    loadedCues = dedupCues(parseVTT(vttText));
     renderSubtitleContent();
   } catch(e) {
     // Fallback: usar full_text del JSON
@@ -1002,6 +1171,32 @@ function parseVTT(text) {
     if (t && !seen.has(t)) cues.push({ start, end, text: t });
   }
   return cues;
+}
+
+// ── DEDUP SOLAPAMIENTO ──
+// YouTube ASR genera ventanas deslizantes: cada cue repite el final del anterior.
+// Este paso detecta y elimina esos solapamientos.
+function dedupCues(cues) {
+  if (!cues.length) return cues;
+  const result = [cues[0]];
+  for (let i = 1; i < cues.length; i++) {
+    const prev = result[result.length - 1].text;
+    const curr = cues[i].text;
+    // Buscar el solapamiento más largo: fin de prev == inicio de curr
+    let overlap = 0;
+    const maxCheck = Math.min(prev.length, curr.length, 120);
+    for (let len = maxCheck; len > 10; len--) {
+      if (prev.endsWith(curr.slice(0, len))) { overlap = len; break; }
+    }
+    if (overlap > 0) {
+      const trimmed = curr.slice(overlap).trim();
+      if (trimmed.length < 8) continue; // descartamos si queda muy poco
+      result.push({ ...cues[i], text: trimmed });
+    } else {
+      result.push(cues[i]);
+    }
+  }
+  return result;
 }
 
 // ── GROUP CUES INTO PARAGRAPHS ──
@@ -1102,6 +1297,76 @@ function setViewMode(mode) {
   document.getElementById("btn-clean").classList.toggle("active", mode === "clean");
   document.getElementById("btn-ts").classList.toggle("active", mode === "ts");
   if (loadedCues.length) renderSubtitleContent();
+}
+
+// ── APP TABS ──
+function setAppTab(tab) {
+  const isDownload = tab === 'download';
+  document.getElementById('download-panel').classList.toggle('visible', isDownload);
+  document.getElementById('library-view').style.display = isDownload ? 'none' : 'flex';
+  document.getElementById('tab-library').classList.toggle('active', !isDownload);
+  document.getElementById('tab-download').classList.toggle('active', isDownload);
+}
+
+// ── DOWNLOAD TAB ──
+let _pollTimer = null;
+let _logOffset = 0;
+
+function startDownload() {
+  const url  = document.getElementById('dl-url').value.trim();
+  const lang = document.getElementById('dl-lang').value;
+  if (!url) { alert('Introduce una URL de YouTube'); return; }
+  callApi(`/api/download?url=${encodeURIComponent(url)}&lang=${encodeURIComponent(lang)}`);
+}
+
+function startReindex() {
+  callApi('/api/reindex');
+}
+
+function callApi(endpoint) {
+  fetch(endpoint)
+    .then(r => r.json())
+    .then(d => {
+      if (!d.ok) { alert(d.msg); return; }
+      showLog();
+      startPolling();
+    })
+    .catch(() => alert('No se pudo conectar con el servidor. ¿Está server.py en marcha?'));
+}
+
+function showLog() {
+  _logOffset = 0;
+  const logEl = document.getElementById('dl-log');
+  logEl.textContent = '';
+  logEl.classList.add('visible');
+  document.getElementById('dl-status').style.display = 'flex';
+  document.getElementById('dl-start-btn').disabled = true;
+}
+
+function startPolling() {
+  clearInterval(_pollTimer);
+  _pollTimer = setInterval(pollLog, 800);
+}
+
+function pollLog() {
+  fetch(`/api/log?offset=${_logOffset}`)
+    .then(r => r.json())
+    .then(d => {
+      if (d.lines.length) {
+        const logEl = document.getElementById('dl-log');
+        logEl.textContent += d.lines.join('\n') + '\n';
+        logEl.scrollTop = logEl.scrollHeight;
+        _logOffset = d.total;
+      }
+      if (!d.running) {
+        clearInterval(_pollTimer);
+        document.getElementById('dl-status').style.display = 'none';
+        document.getElementById('dl-start-btn').disabled = false;
+        document.getElementById('dl-status-msg').textContent = 'Procesando…';
+        // Recargar índice
+        setTimeout(() => { if (confirm('¿Recargar la biblioteca con los nuevos vídeos?')) location.reload(); }, 500);
+      }
+    });
 }
 
 // ── BOOT ──
