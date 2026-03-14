@@ -12,7 +12,7 @@ Uso:
 
 import http.server, subprocess, json, threading, os, sys
 from pathlib import Path
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, unquote
 
 BASE_DIR   = Path(__file__).parent
 CORPUS_DIR = Path(r"C:\Users\Edu\VTTs")   # Carpeta común para todos los proyectos
@@ -63,9 +63,11 @@ def run_download_and_index(url, lang):
             url
         ]
 
+        env = os.environ.copy()
+        env["PYTHONUTF8"] = "1"
         proc = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            text=True, encoding="utf-8", errors="replace"
+            text=True, encoding="utf-8", errors="replace", env=env
         )
 
         for line in proc.stdout:
@@ -79,11 +81,13 @@ def run_download_and_index(url, lang):
         log("🗄️  Indexando...")
 
         # Lanzar indexer.py reutilizando el mismo proceso Python
+        env = os.environ.copy()
+        env["PYTHONUTF8"] = "1"
         idx = subprocess.Popen(
             [sys.executable, str(BASE_DIR / "indexer.py")],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             text=True, encoding="utf-8", errors="replace",
-            cwd=str(BASE_DIR)
+            cwd=str(BASE_DIR), env=env
         )
         for line in idx.stdout:
             log(line.rstrip())
@@ -106,10 +110,12 @@ class VerbaTubeHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        # Decodificar URL para manejar caracteres especiales (tildes, ñ, etc.)
+        decoded_path = unquote(parsed.path, encoding='utf-8')
         params = parse_qs(parsed.query)
 
         # ── API: iniciar descarga ─────────────────────────────────────────────
-        if parsed.path == "/api/download":
+        if decoded_path == "/api/download":
             if _running:
                 self._json({"ok": False, "msg": "Ya hay una descarga en curso"})
                 return
@@ -123,13 +129,13 @@ class VerbaTubeHandler(http.server.SimpleHTTPRequestHandler):
             self._json({"ok": True, "msg": "Descarga iniciada"})
 
         # ── API: leer log (polling) ───────────────────────────────────────────
-        elif parsed.path == "/api/log":
+        elif decoded_path == "/api/log":
             offset = int(params.get("offset", ["0"])[0])
             lines, total, running = get_log_since(offset)
             self._json({"lines": lines, "total": total, "running": running})
 
         # ── API: sólo reindexar ───────────────────────────────────────────────
-        elif parsed.path == "/api/reindex":
+        elif decoded_path == "/api/reindex":
             if _running:
                 self._json({"ok": False, "msg": "Proceso en curso"})
                 return
@@ -153,7 +159,13 @@ class VerbaTubeHandler(http.server.SimpleHTTPRequestHandler):
 
         # ── Archivos estáticos (viewer.html, subtitles/, etc.) ────────────────
         else:
-            super().do_GET()
+            # Servir el archivo decodificando la ruta manualmente
+            # Necesario en Windows para rutas con tildes/ñ/caracteres especiales
+            file_path = BASE_DIR / decoded_path.lstrip('/')
+            if file_path.is_file():
+                self._serve_file(file_path)
+            else:
+                super().do_GET()
 
     def _json(self, data):
         body = json.dumps(data, ensure_ascii=False).encode()
@@ -163,6 +175,32 @@ class VerbaTubeHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(body)
+
+    def _serve_file(self, file_path: Path):
+        """Sirve un archivo estático con detección de tipo MIME."""
+        ext = file_path.suffix.lower()
+        mime_types = {
+            '.html': 'text/html; charset=utf-8',
+            '.js':   'application/javascript; charset=utf-8',
+            '.css':  'text/css; charset=utf-8',
+            '.json': 'application/json; charset=utf-8',
+            '.vtt':  'text/vtt; charset=utf-8',
+            '.srt':  'text/plain; charset=utf-8',
+            '.png':  'image/png',
+            '.jpg':  'image/jpeg',
+            '.ico':  'image/x-icon',
+        }
+        content_type = mime_types.get(ext, 'application/octet-stream')
+        try:
+            data = file_path.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", len(data))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(data)
+        except Exception as e:
+            self.send_error(500, str(e))
 
 
 if __name__ == "__main__":

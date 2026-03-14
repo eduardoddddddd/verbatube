@@ -1107,13 +1107,32 @@ async function loadVideo(v) {
     loadedCues = dedupCues(parseVTT(vttText));
     renderSubtitleContent();
   } catch(e) {
-    // Fallback: usar full_text del JSON
+    // Fallback: usar full_text del JSON con deduplicación
     loadedCues = [];
+    const rawText = v.full_text || '';
+    // Deduplicar: partir en frases y eliminar repeticiones consecutivas
+    const sentences = rawText.split(/(?<=[.?!])\s+/);
+    const deduped = [];
+    for (let i = 0; i < sentences.length; i++) {
+      const s = sentences[i].trim();
+      if (!s) continue;
+      // Saltar si la frase anterior ya termina con o contiene este fragmento
+      const prev = deduped[deduped.length - 1] || '';
+      if (prev && (prev.includes(s) || s.length < 12)) continue;
+      deduped.push(s);
+    }
+    // Agrupar en párrafos de ~4 frases
+    const paragraphs = [];
+    for (let i = 0; i < deduped.length; i += 4) {
+      paragraphs.push(deduped.slice(i, i + 4).join(' '));
+    }
     scroll.innerHTML = `
-      <div class="error-msg">⚠ ${e.message}<br><br>Mostrando texto del índice (sin timestamps):</div>
-      <div style="padding:0 64px 64px;max-width:680px">
-        ${v.full_text.split(". ").map(s => `<p class="clean-paragraph">${s}.</p>`).join("")}
+      <div style="padding:0 0 8px;margin-bottom:24px;border-bottom:1px solid var(--border)">
+        <span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text-dim)">
+          ⚠ Subtítulo no disponible como archivo — mostrando texto del índice
+        </span>
       </div>
+      ${paragraphs.map(p => `<p class="clean-paragraph">${p}</p>`).join('')}
     `;
   }
 }
