@@ -1104,7 +1104,9 @@ async function loadVideo(v) {
     const res = await fetch(v.subtitle_file + "?t=" + Date.now());
     if (!res.ok) throw new Error(`No se pudo cargar ${v.subtitle_file} (HTTP ${res.status})`);
     const vttText = await res.text();
-    loadedCues = dedupCues(parseVTT(vttText));
+    // Filtrar cues de transición (<50ms) — son artefactos del ASR de YouTube
+  const rawCues = parseVTT(vttText).filter(c => (c.end - c.start) >= 0.05);
+  loadedCues = dedupCues(rawCues);
     renderSubtitleContent();
   } catch(e) {
     // Fallback: usar full_text del JSON con deduplicación
