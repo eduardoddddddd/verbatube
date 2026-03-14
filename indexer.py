@@ -75,7 +75,9 @@ def parse_vtt(vtt_path: Path) -> tuple[list[dict], str]:
         if m:
             # Guardar cue anterior
             if current_start is not None and current_lines:
-                text = " ".join(current_lines).strip()
+                # YouTube ASR: si hay 2+ líneas, la primera repite el anterior → última línea
+                text = current_lines[-1] if len(current_lines) > 1 else " ".join(current_lines)
+                text = re.sub(r"\s+", " ", text).strip()
                 if text and text not in seen_texts:
                     cues.append({
                         "start": current_start,
@@ -94,7 +96,9 @@ def parse_vtt(vtt_path: Path) -> tuple[list[dict], str]:
             if line == "":
                 # Fin del cue
                 if current_lines:
-                    text = " ".join(current_lines).strip()
+                    # YouTube ASR: si hay 2+ líneas, la primera repite el anterior → última línea
+                    text = current_lines[-1] if len(current_lines) > 1 else " ".join(current_lines)
+                    text = re.sub(r"\s+", " ", text).strip()
                     if text and text not in seen_texts:
                         cues.append({
                             "start": current_start,
@@ -107,18 +111,16 @@ def parse_vtt(vtt_path: Path) -> tuple[list[dict], str]:
                 current_start = None
             else:
                 cleaned = clean_text(line)
-                if cleaned and not re.match(r"^\d+$", cleaned):  # Ignorar números solos (índices SRT)
+                if cleaned and not re.match(r"^\d+$", cleaned):
                     current_lines.append(cleaned)
 
     # Último cue sin línea en blanco final
     if current_lines and current_start is not None:
-        text = " ".join(current_lines).strip()
+        # YouTube ASR: si hay 2+ líneas, la primera repite el cue anterior → usar solo la última
+        text = current_lines[-1] if len(current_lines) > 1 else " ".join(current_lines)
+        text = re.sub(r"\s+", " ", text).strip()
         if text and text not in seen_texts:
-            cues.append({
-                "start": current_start,
-                "end": current_end,
-                "text": text
-            })
+            cues.append({"start": current_start, "end": current_end, "text": text})
 
     # Construir full_text: texto limpio, sin duplicados, separado por espacios
     full_text = " ".join(cue["text"] for cue in cues)

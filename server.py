@@ -159,9 +159,13 @@ class VerbaTubeHandler(http.server.SimpleHTTPRequestHandler):
 
         # ── Archivos estáticos (viewer.html, subtitles/, etc.) ────────────────
         else:
-            # Servir el archivo decodificando la ruta manualmente
-            # Necesario en Windows para rutas con tildes/ñ/caracteres especiales
-            file_path = BASE_DIR / decoded_path.lstrip('/')
+            # Mapear subtitles/ → CORPUS_DIR directamente (sin depender de junction)
+            if decoded_path.startswith('/subtitles/'):
+                rel = decoded_path[len('/subtitles/'):]
+                file_path = CORPUS_DIR / rel
+            else:
+                file_path = BASE_DIR / decoded_path.lstrip('/')
+
             if file_path.is_file():
                 self._serve_file(file_path)
             else:

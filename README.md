@@ -1,7 +1,7 @@
 # Verbatube
 
 Base de datos local de subtítulos de YouTube con visualizador web.
-Sin servidores externos, sin APIs de pago. Todo local.
+Sin servidores externos, sin APIs de pago. Todo local y offline.
 
 ## Requisitos
 
@@ -9,102 +9,111 @@ Sin servidores externos, sin APIs de pago. Todo local.
 pip install yt-dlp
 ```
 
-## Estructura
+## Instalación en un PC/Mac nuevo
 
-```
-verbatube/
-├── server.py             # Servidor local (reemplaza http.server) + API de descarga
-├── downloader.py         # Descarga subtítulos de canal/playlist/vídeo
-├── indexer.py            # Construye el índice JSON de búsqueda
-├── viewer.html           # Visualizador web (SPA completa)
-├── verbatube.json        # Índice generado (se crea al indexar)
-└── subtitles/            # Junction → C:\Users\Edu\VTTs (carpeta común de VTTs)
-```
-
-## Carpeta común de VTTs
-
-Todos los subtítulos se almacenan en `C:\Users\Edu\VTTs\` organizados por canal:
-
-```
-C:\Users\Edu\VTTs\
-├── Isabel Pareja Astrología terapéutica y evolutiva\
-├── MERCEDES - The Astral Method\
-├── TuLunayTu\
-└── Ursula Cosmic\
-```
-
-Esta carpeta es compartida con otros proyectos (AstroExtracto).
-La variable `CORPUS_DIR` en `server.py`, `indexer.py` y `downloader.py` apunta siempre aquí.
-
-
-## Uso paso a paso
-
-### 1. Arrancar el servidor (siempre primero)
+### 1. Clona el repositorio
 
 ```bash
-cd C:\Users\Edu\Verbatube
+git clone https://github.com/eduardoddddddd/verbatube.git
+cd verbatube
+```
+
+### 2. Configura la ruta de tus VTTs
+
+Abre los tres archivos siguientes y cambia `CORPUS_DIR` a la ruta donde quieres guardar los subtítulos:
+
+**`server.py`** (línea ~17):
+```python
+CORPUS_DIR = Path(r"C:\Users\Edu\VTTs")   # ← cambia esto
+```
+
+**`indexer.py`** (línea ~20):
+```python
+CORPUS_DIR = Path(r"C:\Users\Edu\VTTs")   # ← cambia esto
+```
+
+**`downloader.py`** (línea ~17):
+```python
+CORPUS_DIR = Path(r"C:\Users\Edu\VTTs")   # ← cambia esto
+```
+
+**Ejemplos por sistema:**
+- Windows: `Path(r"C:\Users\TuUsuario\VTTs")`
+- Mac/Linux: `Path("/Users/tuusuario/VTTs")` o `Path.home() / "VTTs"`
+
+> Esta es la **única configuración necesaria**. El resto funciona igual en cualquier sistema.
+
+### 3. Arranca el servidor
+
+```bash
 python server.py
 ```
 
-Abre automáticamente: **http://localhost:8080/viewer.html**
+Se abre automáticamente en: **http://localhost:8080/viewer.html**
 
-> ⚠️ Usar siempre `server.py` en lugar de `python -m http.server`.
-> Si se modifica cualquier `.py`, matar el proceso y relanzar.
 
-### 2. Descargar desde el viewer
+## Uso diario
 
-Pestaña **"+ Descargar"** → introducir URL → seleccionar idioma → Iniciar descarga.
-El log aparece en tiempo real. Al terminar, recarga automáticamente la biblioteca.
+### Descargar un canal o vídeo
 
-### 3. Descargar desde línea de comandos
+**Opción A — desde el propio viewer** (recomendado):
+Pestaña **"+ Descargar"** → URL → Iniciar descarga → log en tiempo real → recarga automática.
 
+**Opción B — línea de comandos:**
 ```bash
-# Canal entero
 python downloader.py --channel "https://www.youtube.com/@canal"
-
-# Playlist
 python downloader.py --playlist "https://www.youtube.com/playlist?list=PLxxx"
-
-# Vídeo individual
 python downloader.py --video "https://www.youtube.com/watch?v=xxxxx"
-
-# Solo español
-python downloader.py --channel "URL" --lang es
+python downloader.py --channel "URL" --lang es        # solo español
+python downloader.py --channel "URL" --lang es,en     # español + inglés
 ```
 
-### 4. Reindexar manualmente
-
+Tras la descarga, el indexer se lanza automáticamente desde el viewer.
+Si se usa la línea de comandos, ejecutar también:
 ```bash
-python indexer.py            # Incremental (solo nuevos)
-python indexer.py --rebuild  # Reconstruir desde cero
+python indexer.py             # incremental (solo nuevos)
+python indexer.py --rebuild   # reconstruir todo desde cero
 ```
 
+## Estructura del proyecto
+
+```
+verbatube/
+├── server.py       # Servidor local (arrancar siempre con esto)
+├── downloader.py   # Descarga subtítulos de YouTube vía yt-dlp
+├── indexer.py      # Construye el índice JSON de búsqueda
+├── viewer.html     # Interfaz web (SPA completa)
+└── verbatube.json  # Índice generado — NO subir a git
+```
+
+Los VTTs se guardan en `CORPUS_DIR` (configurable), organizados por canal:
+```
+VTTs/
+├── Canal A/
+│   ├── 20240101_VIDEOID_Título.es.vtt
+│   └── 20240101_VIDEOID_Título.info.json
+└── Canal B/
+    └── ...
+```
 
 ## Funcionalidades del visualizador
 
-- **Búsqueda full-text** en tiempo real sobre el texto de todos los subtítulos
-- **Filtro por canal** e idioma
-- **Vista limpia** — párrafos agrupados por pausas, sin timestamps, fuente grande
-- **Vista con timestamps** — cada fragmento enlaza al minuto exacto en YouTube
-- **Búsqueda dentro del vídeo** — navegación entre coincidencias con Enter
-- **Deduplicación ASR** — elimina las repeticiones de ventana deslizante de YouTube
-- **Pestaña Descargar** — descarga + reindexación con log en tiempo real
+- Búsqueda full-text en tiempo real sobre el texto de todos los subtítulos
+- Filtro por canal e idioma
+- Vista limpia (párrafos agrupados, sin timestamps)
+- Vista con timestamps (cada fragmento enlaza al minuto exacto en YouTube)
+- Búsqueda dentro del vídeo activo con navegación entre coincidencias
+- Deduplicación del ASR de YouTube (elimina las repeticiones típicas)
+- Pestaña Descargar con log en tiempo real
 
-## Notas técnicas
+## Notas importantes
 
-- El `verbatube.json` incluye el texto completo de cada vídeo para búsqueda (~50KB/vídeo).
-- La indexación es incremental: solo procesa VTTs nuevos o modificados (compara mtime).
-- Los subtítulos automáticos ASR tienen calidad variable pero son suficientes para búsqueda.
-- El servidor expone tres endpoints: `/api/download`, `/api/reindex`, `/api/log`.
-- La junction `subtitles/` permite al viewer servir los VTTs como archivos estáticos.
-
-## Problemas conocidos y soluciones
-
-| Problema | Causa | Solución |
-|---|---|---|
-| Vídeo descargado no aparece en biblioteca | Servidor desactualizado | Reiniciar `server.py` |
-| Error al indexar | `CORPUS_DIR` fuera de `BASE_DIR` | Ya corregido (v1.1) |
-| Texto muy repetido | Subtítulos ASR con ventana deslizante | Deduplicación activa en viewer |
+- **Arrancar siempre con `python server.py`**, no con `python -m http.server`.
+  Si se modifica cualquier `.py`, reiniciar el servidor.
+- `verbatube.json` puede pesar bastante (≈50 KB por vídeo). Está en `.gitignore`.
+- Algunos vídeos de YouTube no tienen subtítulos automáticos — en ese caso
+  solo se descarga el `.info.json` sin `.vtt` y no aparecen en el viewer.
+- La indexación es incremental: solo procesa VTTs nuevos o modificados.
 
 ---
 
